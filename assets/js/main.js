@@ -1,5 +1,5 @@
 /*
-	Overflow by HTML5 UP
+	Hyperspace by HTML5 UP
 	html5up.net | @ajlkn
 	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
 */
@@ -8,27 +8,20 @@
 
 	var	$window = $(window),
 		$body = $('body'),
-		settings = {
-
-			// Parallax background effect?
-				parallax: true,
-
-			// Parallax factor (lower = more intense, higher = less intense).
-				parallaxFactor: 10
-
-		};
+		$sidebar = $('#sidebar');
 
 	// Breakpoints.
 		breakpoints({
-			wide:    [ '1081px',  '1680px' ],
-			normal:  [ '841px',   '1080px' ],
-			narrow:  [ '737px',   '840px'  ],
-			mobile:  [ null,      '736px'  ]
+			xlarge:   [ '1281px',  '1680px' ],
+			large:    [ '981px',   '1280px' ],
+			medium:   [ '737px',   '980px'  ],
+			small:    [ '481px',   '736px'  ],
+			xsmall:   [ null,      '480px'  ]
 		});
 
-	// Mobile?
-		if (browser.mobile)
-			$body.addClass('is-scroll');
+	// Hack: Enable IE flexbox workarounds.
+		if (browser.name == 'ie')
+			$body.addClass('is-ie');
 
 	// Play initial animations on page load.
 		$window.on('load', function() {
@@ -37,69 +30,161 @@
 			}, 100);
 		});
 
-	// Scrolly.
-		$('.scrolly-middle').scrolly({
-			speed: 1000,
-			anchor: 'middle'
-		});
+	// Forms.
 
-		$('.scrolly').scrolly({
-			speed: 1000,
-			offset: function() { return (breakpoints.active('<=mobile') ? 70 : 190); }
-		});
+		// Hack: Activate non-input submits.
+			$('form').on('click', '.submit', function(event) {
 
-	// Parallax background.
+				// Stop propagation, default.
+					event.stopPropagation();
+					event.preventDefault();
 
-		// Disable parallax on IE/Edge (smooth scrolling is jerky), and on mobile platforms (= better performance).
-			if (browser.name == 'ie'
-			||	browser.name == 'edge'
-			||	browser.mobile)
-				settings.parallax = false;
+				// Submit form.
+					$(this).parents('form').submit();
 
-		if (settings.parallax) {
+			});
 
-			var $dummy = $(), $bg;
+	// Sidebar.
+		if ($sidebar.length > 0) {
 
-			$window
-				.on('scroll.overflow_parallax', function() {
+			var $sidebar_a = $sidebar.find('a');
 
-					// Adjust background position.
-						$bg.css('background-position', 'center ' + (-1 * (parseInt($window.scrollTop()) / settings.parallaxFactor)) + 'px');
+			$sidebar_a
+				.addClass('scrolly')
+				.on('click', function() {
 
-				})
-				.on('resize.overflow_parallax', function() {
+					var $this = $(this);
 
-					// If we're in a situation where we need to temporarily disable parallax, do so.
-						if (breakpoints.active('<=narrow')) {
+					// External link? Bail.
+						if ($this.attr('href').charAt(0) != '#')
+							return;
 
-							$body.css('background-position', '');
-							$bg = $dummy;
+					// Deactivate all links.
+						$sidebar_a.removeClass('active');
 
-						}
-
-					// Otherwise, continue as normal.
-						else
-							$bg = $body;
-
-					// Trigger scroll handler.
-						$window.triggerHandler('scroll.overflow_parallax');
+					// Activate link *and* lock it (so Scrollex doesn't try to activate other links as we're scrolling to this one's section).
+						$this
+							.addClass('active')
+							.addClass('active-locked');
 
 				})
-				.trigger('resize.overflow_parallax');
+				.each(function() {
+
+					var	$this = $(this),
+						id = $this.attr('href'),
+						$section = $(id);
+
+					// No section for this link? Bail.
+						if ($section.length < 1)
+							return;
+
+					// Scrollex.
+						$section.scrollex({
+							mode: 'middle',
+							top: '-20vh',
+							bottom: '-20vh',
+							initialize: function() {
+
+								// Deactivate section.
+									$section.addClass('inactive');
+
+							},
+							enter: function() {
+
+								// Activate section.
+									$section.removeClass('inactive');
+
+								// No locked links? Deactivate all links and activate this section's one.
+									if ($sidebar_a.filter('.active-locked').length == 0) {
+
+										$sidebar_a.removeClass('active');
+										$this.addClass('active');
+
+									}
+
+								// Otherwise, if this section's link is the one that's locked, unlock it.
+									else if ($this.hasClass('active-locked'))
+										$this.removeClass('active-locked');
+
+							}
+						});
+
+				});
 
 		}
 
-	// Poptrox.
-		$('.gallery').poptrox({
-			useBodyOverflow: false,
-			usePopupEasyClose: false,
-			overlayColor: '#0a1919',
-			overlayOpacity: 0.75,
-			usePopupDefaultStyling: false,
-			usePopupCaption: true,
-			popupLoaderText: '',
-			windowMargin: 10,
-			usePopupNav: true
+	// Scrolly.
+		$('.scrolly').scrolly({
+			speed: 1000,
+			offset: function() {
+
+				// If <=large, >small, and sidebar is present, use its height as the offset.
+					if (breakpoints.active('<=large')
+					&&	!breakpoints.active('<=small')
+					&&	$sidebar.length > 0)
+						return $sidebar.height();
+
+				return 0;
+
+			}
 		});
+
+	// Spotlights.
+		$('.spotlights > section')
+			.scrollex({
+				mode: 'middle',
+				top: '-10vh',
+				bottom: '-10vh',
+				initialize: function() {
+
+					// Deactivate section.
+						$(this).addClass('inactive');
+
+				},
+				enter: function() {
+
+					// Activate section.
+						$(this).removeClass('inactive');
+
+				}
+			})
+			.each(function() {
+
+				var	$this = $(this),
+					$image = $this.find('.image'),
+					$img = $image.find('img'),
+					x;
+
+				// Assign image.
+					$image.css('background-image', 'url(' + $img.attr('src') + ')');
+
+				// Set background position.
+					if (x = $img.data('position'))
+						$image.css('background-position', x);
+
+				// Hide <img>.
+					$img.hide();
+
+			});
+
+	// Features.
+		$('.features')
+			.scrollex({
+				mode: 'middle',
+				top: '-20vh',
+				bottom: '-20vh',
+				initialize: function() {
+
+					// Deactivate section.
+						$(this).addClass('inactive');
+
+				},
+				enter: function() {
+
+					// Activate section.
+						$(this).removeClass('inactive');
+
+				}
+			});
 
 })(jQuery);
